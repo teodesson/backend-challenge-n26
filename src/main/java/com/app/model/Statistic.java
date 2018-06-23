@@ -3,7 +3,6 @@ package com.app.model;
 import java.io.Serializable;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 
 /**
  *

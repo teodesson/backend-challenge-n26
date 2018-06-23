@@ -6,8 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import static io.restassured.RestAssured.given;
 import io.restassured.response.Response;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.http.HttpStatus;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
