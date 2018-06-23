@@ -4,6 +4,7 @@ import com.app.config.AppConfig;
 import com.app.helper.TransactionBucket;
 import com.app.model.Statistic;
 import com.app.model.Transaction;
+import com.app.util.TimeUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -19,47 +20,49 @@ public class DataStorageComponent {
     @Autowired
     public DataStorageComponent() {
         transactionBuckets = new TransactionBucket[AppConfig.MS_2_RECYCLE_A_BUCKET / AppConfig.MS_2_RETAIN_IN_BUCKET];
+        resetBuckets();        
+    }
+
+    public void resetBuckets() {
         for (int i = 0; i < transactionBuckets.length; i++) {
             transactionBuckets[i] = new TransactionBucket();
         }
     }
-
-    private int getTransactionBucketsIndexForTimestamp(final long timestamp) {
+    
+    private int getTransactionBucketsIndex(final long timestamp) {
         return (int) ((timestamp / AppConfig.MS_2_RETAIN_IN_BUCKET) % transactionBuckets.length);
     }
 
-    private long getTimestampCutOff() {
-        return System.currentTimeMillis() - AppConfig.MS_2_RECYCLE_A_BUCKET;
-    }
-
-    public boolean isValidTransactionTimestamp(final long timestamp) {
-        return timestamp >= getTimestampCutOff();
+    public boolean isValidTransactionTimestamp(final long timestamp, long timestampCutOff) {
+        return timestamp >= timestampCutOff;
     }
 
     public boolean addTransaction(final Transaction transaction) {
-        final int index = getTransactionBucketsIndexForTimestamp(transaction.getTimestamp());
-        if (isValidTransactionTimestamp(transaction.getTimestamp())) {
+        if (isValidTransactionTimestamp(transaction.getTimestamp(), TimeUtil.getTimestampCutOff())) {
+            final int index = getTransactionBucketsIndex(transaction.getTimestamp());
             synchronized (transactionBuckets[index]) {
-                transactionBuckets[index] = new TransactionBucket(transaction, transactionBuckets[index]);
+                if (transactionBuckets[index].getTimestamp() + AppConfig.MS_2_RECYCLE_A_BUCKET < transaction.getTimestamp()) {
+                    // RESET bucket!!!
+                    transactionBuckets[index] = new TransactionBucket(transaction);                    
+                }
+                else {
+                    transactionBuckets[index] = new TransactionBucket(transaction, transactionBuckets[index]);
+                }
             }
             return true;
         } else {
-            synchronized (transactionBuckets[index]) {
-                // reset
-                transactionBuckets[index] = new TransactionBucket();
-            }
             return false;
         }
     }
 
     public Statistic getStatistics() {
         Statistic statistic = new Statistic();
+        long timestampCutOff = TimeUtil.getTimestampCutOff(); // timestamp cutoff when statistics called
         for (int i = 0; i < transactionBuckets.length; i++) {
-            if (isValidTransactionTimestamp(transactionBuckets[i].getTimestamp())) {
+            if (isValidTransactionTimestamp(transactionBuckets[i].getTimestamp(), timestampCutOff)) {
                 statistic.mergeStatistic(transactionBuckets[i]);
             }
         }
         return statistic;
     }
-
 }

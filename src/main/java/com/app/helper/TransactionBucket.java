@@ -11,10 +11,19 @@ public class TransactionBucket extends Statistic {
 
     private long timestamp;
 
-    public TransactionBucket() {
+    public TransactionBucket() {        
+    }
+    
+    public TransactionBucket(final Transaction transaction) {
+        assignTransaction(transaction);
     }
     
     public TransactionBucket(final Transaction transaction, final TransactionBucket otherBucket) {
+        assignTransaction(transaction);
+        mergeStatistic(otherBucket);
+    }
+
+    private void assignTransaction(final Transaction transaction) {
         // update to the latest timestamp
         if (transaction.getTimestamp() > this.timestamp) {
             this.timestamp = transaction.getTimestamp();
@@ -24,9 +33,8 @@ public class TransactionBucket extends Statistic {
         this.setAvg(transaction.getAmount());
         this.setMax(transaction.getAmount());
         this.setMin(transaction.getAmount());
-        mergeStatistic(otherBucket);
     }
-
+    
     /**
      * Get latest timestamp from transaction inserted in the bucket
      * @return the timestamp
